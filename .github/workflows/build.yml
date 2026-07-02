@@ -1,0 +1,41 @@
+name: Build Android Launcher APK
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Cordova Compiler
+        run: npm install -g cordova
+
+      - name: Create Native App Wrapper
+        run: |
+          cordova create build_dir com.e46.idrivelauncher "E46 iDrive Launcher"
+          cd build_dir
+          cordova platform add android
+          rm -rf www/*
+          
+      - name: Inject Project Files
+        run: |
+          cp index.html build_dir/www/
+          cp config.xml build_dir/
+          cp e46.* build_dir/www/ || true
+
+      - name: Compile Free APK
+        run: |
+          cd build_dir
+          cordova build android --debug
+
+      - name: Deliver APK File
+        uses: actions/upload-artifact@v4
+        with:
+          name: idrive-launcher-apk
+          path: build_dir/platforms/android/app/build/outputs/apk/debug/app-debug.apk
