@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.e46.idrivelauncher" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android">
+    <name>E46 iDrive Launcher</name>
+    <description>Custom 3D iDrive 7.0 Home Screen Replacement for BMW E46.</description>
+    <content src="index.html" />
+    <access origin="*" />
+    
+    <platform name="android">
+        <!-- Force full screen, hide status bars, and hardware-accelerate WebGL -->
+        <preference name="Fullscreen" value="true" />
+        <preference name="HardwareAccelerated" value="true" />
+        
+        <!-- Inject Launcher Permissions straight into the Android manifest -->
+        <config-file target="AndroidManifest.xml" parent="/manifest/application/activity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </config-file>
+    </platform>
+</widget>
