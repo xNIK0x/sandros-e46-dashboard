@@ -30,14 +30,21 @@ jobs:
       - name: Install Cordova
         run: npm install -g cordova
 
-      - name: Create Cordova Android Project Setup
-        run: cordova platform add android --nosave || true
+      - name: Initialize Cordova Project Workspace
+        run: |
+          cordova create build_workspace com.bmw.e46hud "E46 Minimalist HUD"
+          cp config.xml build_workspace/config.xml
+          cp index.html build_workspace/www/index.html
+          if [ -f "e46.glb" ]; then cp e46.glb build_workspace/www/e46.glb; fi
 
       - name: Compile Android APK
-        run: cordova build android --device
+        run: |
+          cd build_workspace
+          cordova platform add android --nosave
+          cordova build android --device
 
       - name: Upload Finished APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: E46-HUD-Release-APK
-          path: platforms/android/app/build/outputs/apk/debug/app-debug.apk
+          path: build_workspace/platforms/android/app/build/outputs/apk/debug/app-debug.apk
