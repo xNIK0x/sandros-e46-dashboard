@@ -2,592 +2,410 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>E46 iDrive 7.0 Professional OS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>E46 Minimalist HUD</title>
+    <script src="cordova.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
+        :root {
+            --bg-color: #050506;
+            --panel-bg: rgba(10, 10, 12, 0.9);
+            --border-color: rgba(255, 255, 255, 0.02);
+            --accent-bmw: #ff7b00;
+            --text-main: #f3f4f6;
+            --text-muted: #4b5563;
+        }
+
         * {
             box-sizing: border-box;
+            margin: 0; padding: 0;
             user-select: none;
             -webkit-user-select: none;
-            margin: 0;
-            padding: 0;
         }
-        
+
         body, html {
-            width: 100%;
-            height: 100%;
+            width: 100%; height: 100%;
             overflow: hidden;
-            background-color: #05070a;
+            background-color: var(--bg-color);
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            color: #e2e8f0;
+            color: var(--text-main);
         }
 
-        /* iDrive 7.0 Full Screen Layout Base */
-        .idrive-screen {
+        .hud-container {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            width: 100%; height: 100%;
+            padding: 24px; gap: 24px;
+        }
+
+        .sidebar {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 32px 24px;
             display: flex;
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-            background: radial-gradient(circle at 30% 50%, #0d1527 0%, #05070a 70%);
+            flex-direction: column;
+            justify-content: space-between;
         }
 
-        /* 3D Viewport Zone */
-        #canvas-container {
-            flex: 1;
+        .brand-header {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .brand-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .brand-sub {
+            font-size: 0.65rem;
+            color: var(--accent-bmw);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 600;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 40px;
+            flex-grow: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-radius: 6px;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.015);
+        }
+
+        .nav-item.active {
+            border-left: 2px solid var(--accent-bmw);
+            padding-left: 14px;
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .display-area {
+            display: grid;
+            grid-template-rows: 1fr 200px;
+            gap: 24px;
             height: 100%;
+        }
+
+        .canvas-card {
+            background: #050506;
             position: relative;
-            z-index: 1;
+            overflow: hidden;
+            border-radius: 12px;
+        }
+
+        #canvas-container {
+            width: 100%; height: 100%;
+        }
+
+        .audio-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .audio-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .track-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .track-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .track-artist {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+            margin: 10px auto;
+        }
+
+        .control-btn {
+            background: none; border: none;
+            color: var(--text-main);
+            cursor: pointer; font-size: 0.75rem;
+            text-transform: uppercase; letter-spacing: 0.1em;
+        }
+
+        .play-btn {
+            width: 44px; height: 44px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.08);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold;
+        }
+
+        .import-btn-label {
+            font-size: 0.65rem;
+            color: var(--accent-bmw);
+            border: 1px solid rgba(255, 123, 0, 0.4);
+            padding: 6px 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .import-btn-label:hover {
+            border-color: var(--accent-bmw);
+            background: rgba(255, 123, 0, 0.05);
+        }
+
+        #audio-upload { display: none; }
+
+        .progress-bar-container {
+            width: 100%; height: 2px;
+            background: rgba(255,255,255,0.03);
+            position: relative; border-radius: 2px;
+            cursor: pointer;
+        }
+
+        .progress-bar-fill {
+            height: 100%; width: 0%;
+            background: var(--accent-bmw);
+            position: absolute; top: 0; left: 0;
         }
 
         #loader {
             position: absolute;
-            top: 50%;
-            left: 30%;
+            top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            color: #3b82f6;
-            font-size: 1rem;
-            font-weight: bold;
-            z-index: 10;
+            font-size: 0.65rem; letter-spacing: 0.2em;
+            color: var(--text-muted);
             text-transform: uppercase;
-            letter-spacing: 3px;
-            transition: opacity 0.4s ease;
-        }
-
-        /* Navigation & App Menu Tiles Sidebar */
-        .idrive-sidebar {
-            width: 460px;
-            height: 100%;
-            background: linear-gradient(90deg, rgba(5,7,10,0) 0%, rgba(5,7,10,0.85) 20%, rgba(8,11,18,0.98) 100%);
-            position: absolute;
-            right: 0;
-            top: 0;
-            z-index: 2;
-            display: flex;
-            flex-direction: column;
-            padding: 30px 24px;
-            justify-content: center;
-            gap: 14px;
-            box-shadow: -25px 0 50px rgba(0,0,0,0.6);
-        }
-
-        /* iDrive Flat Geometric Tile Design */
-        .idrive-tile {
-            background: linear-gradient(135deg, rgba(16,24,40,0.85) 0%, rgba(10,14,23,0.95) 100%);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 18px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Mystic Blue Selection Bar Accent */
-        .idrive-tile::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 0;
-            height: 100%;
-            width: 4px;
-            background-color: transparent;
-            transition: background-color 0.2s;
-        }
-
-        .idrive-tile.active, .idrive-tile:active {
-            background: linear-gradient(135deg, rgba(28,43,73,0.9) 0%, rgba(14,22,38,0.98) 100%);
-            border-color: rgba(59, 130, 246, 0.5);
-            transform: translateX(-4px);
-        }
-
-        .idrive-tile.active::before, .idrive-tile:active::before {
-            background-color: #3b82f6; /* Custom Mystic Blue Factory Match */
-        }
-
-        .tile-content {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-        }
-
-        .tile-icon {
-            font-size: 1.6rem;
-            width: 44px;
-            height: 44px;
-            background: rgba(255,255,255,0.03);
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-
-        .tile-text {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .tile-title {
-            font-size: 1.15rem;
-            font-weight: 600;
-            color: #ffffff;
-            letter-spacing: 0.5px;
-        }
-
-        .tile-status {
-            font-size: 0.8rem;
-            color: #748094;
-            margin-top: 2px;
-        }
-
-        /* Top Bar Status Layout */
-        .top-status-bar {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            padding: 20px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            z-index: 5;
-            pointer-events: none;
-        }
-
-        .sys-clock {
-            font-size: 1.4rem;
-            font-weight: 700;
-            color: #ffffff;
-            letter-spacing: 1px;
-        }
-
-        .sys-badge {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: #ffffff;
-            background: linear-gradient(90deg, #1d4ed8 0%, #ef4444 100%); /* M-Performance colors */
-            padding: 4px 14px;
-            border-radius: 3px;
-            letter-spacing: 2px;
-        }
-
-        /* Custom Built-In Offline Audio Player UI Overlay */
-        .music-player-panel {
-            background: rgba(10, 15, 26, 0.96);
-            border-top: 2px solid #3b82f6;
-            position: absolute;
-            bottom: -220px;
-            left: 0;
-            width: calc(100% - 460px);
-            height: 180px;
-            z-index: 4;
-            transition: bottom 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-            padding: 20px 30px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            box-shadow: 0 -10px 30px rgba(0,0,0,0.5);
-        }
-
-        .music-player-panel.visible {
-            bottom: 0;
-        }
-
-        .track-details {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .track-meta h4 {
-            font-size: 1.1rem;
-            color: #fff;
-            margin-bottom: 4px;
-        }
-
-        .track-meta p {
-            font-size: 0.85rem;
-            color: #64748b;
-        }
-
-        .player-controls {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 30px;
-            margin: 10px 0;
-        }
-
-        .btn-ctrl {
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 1.8rem;
-            cursor: pointer;
-            transition: color 0.2s;
-        }
-
-        .btn-ctrl:active {
-            color: #3b82f6;
-        }
-
-        .progress-container {
-            width: 100%;
-            height: 4px;
-            background: #1e293b;
-            border-radius: 2px;
-            position: relative;
-            cursor: pointer;
-        }
-
-        .progress-bar {
-            width: 0%;
-            height: 100%;
-            background: #3b82f6;
-            border-radius: 2px;
         }
     </style>
 </head>
 <body>
 
-    <div class="idrive-screen">
-        <!-- System Top Information Line -->
-        <div class="top-status-bar">
-            <div class="sys-clock" id="idrive-clock">00:00</div>
-            <div class="sys-badge">E46 //M</div>
-        </div>
-
-        <!-- 3D Environment Node Viewport -->
-        <div id="loader">Initializing E46 Interface...</div>
-        <div id="canvas-container"></div>
-
-        <!-- Integrated Offline Music Module -->
-        <div class="music-player-panel" id="audio-panel">
-            <div class="track-details">
-                <div class="track-meta">
-                    <h4 id="audio-title">No Local Media Detected</h4>
-                    <p id="audio-artist">Drop MP3s into /sdcard/Music/E46Player/</p>
-                </div>
-                <div class="track-index" id="audio-count">0/0</div>
-            </div>
-            
-            <div class="player-controls">
-                <button class="btn-ctrl" onclick="prevTrack()">⏮</button>
-                <button class="btn-ctrl" id="play-btn" onclick="togglePlay()">▶</button>
-                <button class="btn-ctrl" onclick="nextTrack()">⏭</button>
+    <div class="hud-container">
+        <div class="sidebar">
+            <div class="brand-header">
+                <div class="brand-title">M Performance</div>
+                <div class="brand-sub">HUD Core</div>
             </div>
 
-            <div class="progress-container" onclick="seekAudio(event)">
-                <div class="progress-bar" id="audio-progress"></div>
+            <div class="nav-menu">
+                <div class="nav-item active" onclick="launchNativeApp('com.google.android.apps.maps')">Navigation</div>
+                <div class="nav-item" onclick="launchNativeApp('com.spotify.music')">Spotify</div>
+                <div class="nav-item" onclick="launchNativeApp('com.android.chrome')">Browser</div>
+                <div class="nav-item" onclick="launchNativeApp('com.android.settings')">Settings</div>
+            </div>
+
+            <div class="brand-header">
+                <div id="hud-clock" style="font-size: 1.4rem; font-weight: 200; font-variant-numeric: tabular-nums;">00:00</div>
             </div>
         </div>
 
-        <!-- Main Operating System Navigation Bar -->
-        <div class="idrive-sidebar">
-            
-            <div class="idrive-tile active" id="tile-home" onclick="switchView('home', 'side')">
-                <div class="tile-content">
-                    <div class="tile-icon" style="color:#3b82f6;">🚗</div>
-                    <div class="tile-text">
-                        <div class="tile-title">Chassis Overview</div>
-                        <div class="tile-status">System Diagnostic OK</div>
-                    </div>
-                </div>
+        <div class="display-area">
+            <div class="canvas-card">
+                <div id="loader">Syncing 3D System...</div>
+                <div id="canvas-container"></div>
             </div>
 
-            <div class="idrive-tile" id="tile-nav" onclick="switchView('nav', 'front'); launchAndroidApp('com.google.android.apps.maps')">
-                <div class="tile-content">
-                    <div class="tile-icon" style="color:#ef4444;">🧭</div>
-                    <div class="tile-text">
-                        <div class="tile-title">Navigation System</div>
-                        <div class="tile-status">Launch Google Maps</div>
+            <div class="audio-card">
+                <div class="audio-header">
+                    <div class="track-info">
+                        <span class="track-title" id="display-title">System Audio Idle</span>
+                        <span class="track-artist" id="display-file">Select source track</span>
                     </div>
+                    <label class="import-btn-label" for="audio-upload">Import Track</label>
+                    <input type="file" id="audio-upload" accept="audio/*" onchange="handleAudioImport(this)">
                 </div>
-                <div>➔</div>
-            </div>
 
-            <div class="idrive-tile" id="tile-media" onclick="switchView('media', 'rear')">
-                <div class="tile-content">
-                    <div class="tile-icon" style="color:#10b981;">🎵</div>
-                    <div class="tile-text">
-                        <div class="tile-title">Music</div>
-                        <div class="tile-status" id="player-tile-status">Scanning Directory Storage...</div>
-                    </div>
+                <div class="audio-controls">
+                    <button class="control-btn" onclick="skipAudio(-5)">-5s</button>
+                    <button class="control-btn play-btn" id="play-state-toggle" onclick="toggleAudioState()">Play</button>
+                    <button class="control-btn" onclick="skipAudio(5)">+5s</button>
                 </div>
-                <div>➔</div>
-            </div>
 
-            <div class="idrive-tile" id="tile-video" onclick="switchView('video', 'front'); launchAndroidApp('com.google.android.youtube')">
-                <div class="tile-content">
-                    <div class="tile-icon" style="color:#ff0000;">📺</div>
-                    <div class="tile-text">
-                        <div class="tile-title">Entertainment Feed</div>
-                        <div class="tile-status">Launch YouTube Network</div>
-                    </div>
+                <div class="progress-bar-container" onclick="seekAudio(event)">
+                    <div class="progress-bar-fill" id="track-progress"></div>
                 </div>
-                <div>➔</div>
             </div>
-
         </div>
     </div>
 
-    <!-- Graphics Library Standard Components -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-
     <script>
-        // --- SECTION 1: SYSTEM CLOCK ---
-        function runClock() {
-            const date = new Date();
-            let h = date.getHours();
-            let m = date.getMinutes();
-            document.getElementById('idrive-clock').innerText = `${h < 10 ? '0'+h : h}:${m < 10 ? '0'+m : m}`;
+        function initClockLoop() {
+            const update = () => {
+                const now = new Date();
+                document.getElementById('hud-clock').textContent = 
+                    `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+            };
+            setInterval(update, 1000); update();
         }
-        setInterval(runClock, 1000);
-        runClock();
+        initClockLoop();
 
-        // --- SECTION 2: 3D GRAPHICS ENGINE & CAMERA ROTATION MATRIX ---
-        const container = document.getElementById('canvas-container');
-        const loaderLabel = document.getElementById('loader');
-        
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x05070a);
-        scene.fog = new THREE.FogExp2(0x05070a, 0.07);
+        function launchNativeApp(packageName) {
+            if (window.plugins && window.plugins.launcher) {
+                window.plugins.launcher.launch({ packageName: packageName }, null, null);
+            } else {
+                console.log(`Intent Trigger: ${packageName}`);
+            }
+        }
 
-        const camera = new THREE.PerspectiveCamera(38, container.clientWidth / container.clientHeight, 0.1, 1000);
-        
-        // Default target coordinates looking at the car's side profile view
-        let targetCameraPos = { x: -5.2, y: 1.4, z: 5.2 };
-        camera.position.set(targetCameraPos.x, targetCameraPos.y, targetCameraPos.z);
+        let audioCtx = new Audio();
+        audioCtx.addEventListener('timeupdate', () => {
+            if(audioCtx.duration) {
+                const pct = (audioCtx.currentTime / audioCtx.duration) * 100;
+                document.getElementById('track-progress').style.width = `${pct}%`;
+            }
+        });
+        audioCtx.addEventListener('ended', () => { document.getElementById('play-state-toggle').textContent = "Play"; });
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.outputEncoding = THREE.sRGBEncoding;
-        container.appendChild(renderer.domElement);
+        function handleAudioImport(input) {
+            const file = input.files[0];
+            if (file) {
+                document.getElementById('display-title').textContent = file.name.replace(/\.[^/.]+$/, "");
+                document.getElementById('display-file').textContent = "Local Disk Active";
+                audioCtx.src = URL.createObjectURL(file);
+                audioCtx.play();
+                document.getElementById('play-state-toggle').textContent = "Pause";
+            }
+        }
 
-        // Professional Lighting Configurations (Studio Quality Panels)
-        scene.add(new THREE.AmbientLight(0xffffff, 0.45));
-        
-        const keyLight = new THREE.DirectionalLight(0xffffff, 1.8);
-        keyLight.position.set(6, 10, 5);
-        scene.add(keyLight);
+        function toggleAudioState() {
+            if(!audioCtx.src) return;
+            if(audioCtx.paused) { audioCtx.play(); document.getElementById('play-state-toggle').textContent = "Pause"; }
+            else { audioCtx.pause(); document.getElementById('play-state-toggle').textContent = "Play"; }
+        }
 
-        const fillLight = new THREE.DirectionalLight(0x3b82f6, 0.9); // Mystic Blue ambient floor reflective accent
-        fillLight.position.set(-6, -2, -5);
-        scene.add(fillLight);
+        function skipAudio(seconds) {
+            if(!audioCtx.src) return;
+            audioCtx.currentTime = Math.max(0, Math.min(audioCtx.duration, audioCtx.currentTime + seconds));
+        }
 
-        const floorGrid = new THREE.GridHelper(40, 40, 0x1e293b, 0x0b0f19);
-        floorGrid.position.y = -0.68;
-        scene.add(floorGrid);
+        function seekAudio(e) {
+            if(!audioCtx.src || !audioCtx.duration) return;
+            audioCtx.currentTime = (e.offsetX / e.currentTarget.offsetWidth) * audioCtx.duration;
+        }
 
-        let e46Chassis = null;
-        const gltfLoader = new THREE.GLTFLoader();
+        let scene, camera, renderer, chassisNode;
+        const viewPort = document.getElementById('canvas-container');
 
-        function loadCarAsset() {
-            gltfLoader.load('e46.gltf', 
-                (gltf) => { setupCarModel(gltf); },
-                undefined, 
-                () => {
-                    gltfLoader.load('e46.glb', (glb) => { setupCarModel(glb); }, undefined, () => {
-                        loaderLabel.innerText = "Chassis Asset Missing (.gltf / .glb)";
+        function init3DEnvironment() {
+            scene = new THREE.Scene();
+            
+            camera = new THREE.PerspectiveCamera(38, viewPort.clientWidth / viewPort.clientHeight, 0.1, 100);
+            camera.position.set(4.2, 1.4, 4.2);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(viewPort.clientWidth, viewPort.clientHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.0;
+            viewPort.appendChild(renderer.domElement);
+
+            const ambient = new THREE.AmbientLight(0xffffff, 0.6); 
+            scene.add(ambient);
+
+            const topSoftPanel = new THREE.DirectionalLight(0xffffff, 1.2);
+            topSoftPanel.position.set(0, 8, 2);
+            scene.add(topSoftPanel);
+
+            const rearRimLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            rearRimLight.position.set(-6, 2, -4);
+            scene.add(rearRimLight);
+
+            document.addEventListener('deviceready', loadLocalAssetFile, false);
+            if(!window.cordova) { loadLocalAssetFile(); }
+        }
+
+        function loadLocalAssetFile() {
+            const xhr = new XMLHttpRequest();
+            xhr.open("GET", "e46.glb", true);
+            xhr.responseType = "arraybuffer";
+            xhr.onload = function() {
+                if (this.status === 200 || this.status === 0) {
+                    const loader = new THREE.GLTFLoader();
+                    loader.parse(this.response, "", function(gltf) {
+                        chassisNode = gltf.scene;
+                        
+                        chassisNode.traverse((node) => {
+                            if (node.isMesh) {
+                                node.material.depthWrite = true;
+                                node.material.transparent = false;
+                                
+                                if (node.material) {
+                                    node.material.roughness = 1.0;
+                                    node.material.metalness = 0.0;
+                                    if (node.material.clearcoat !== undefined) {
+                                        node.material.clearcoat = 0.0;
+                                    }
+                                }
+                            }
+                        });
+
+                        const box = new THREE.Box3().setFromObject(chassisNode);
+                        const center = box.getCenter(new THREE.Vector3());
+                        chassisNode.position.x += (chassisNode.position.x - center.x);
+                        chassisNode.position.z += (chassisNode.position.z - center.z);
+                        chassisNode.position.y += (chassisNode.position.y - box.min.y) - 0.60;
+
+                        scene.add(chassisNode);
+                        document.getElementById('loader').style.opacity = '0';
+                        camera.lookAt(new THREE.Vector3(0, 0.1, 0));
                     });
                 }
-            );
+            };
+            xhr.send();
         }
 
-        function setupCarModel(gltf) {
-            e46Chassis = gltf.scene;
-            const boundingBox = new THREE.Box3().setFromObject(e46Chassis);
-            const centerOffset = boundingBox.getCenter(new THREE.Vector3());
-            
-            e46Chassis.position.x += (e46Chassis.position.x - centerOffset.x);
-            e46Chassis.position.z += (e46Chassis.position.z - centerOffset.z);
-            e46Chassis.position.y += (e46Chassis.position.y - boundingBox.min.y) - 0.68; // Snap chassis directly to floor
-
-            scene.add(e46Chassis);
-            loaderLabel.style.opacity = '0';
-            camera.lookAt(new THREE.Vector3(0, 0.1, 0));
-        }
-        loadCarAsset();
-
-        // 3D View Vector Coordinate Mapping Rules (Smooth Interpolation)
-        function switchView(tileId, angle) {
-            // Manage Active Sidebar DOM Highlighting Style states
-            document.querySelectorAll('.idrive-tile').forEach(t => t.classList.remove('active'));
-            const targetTile = document.getElementById(`tile-${tileId}`);
-            if(targetTile) targetTile.classList.add('active');
-
-            // Handle Bottom Audio Panel Display states
-            const audioPanel = document.getElementById('audio-panel');
-            if (tileId === 'media') {
-                audioPanel.classList.add('visible');
-                initializeOfflineScanner(); 
-            } else {
-                audioPanel.classList.remove('visible');
-            }
-
-            // Assign Spatial Target Locations Based On Selected Layout Node
-            if (angle === 'side') {
-                targetCameraPos = { x: -5.4, y: 1.4, z: 5.2 }; // Perfect Side View
-            } else if (angle === 'front') {
-                targetCameraPos = { x: -0.1, y: 1.3, z: 6.2 }; // Sweeping Front Nose View
-            } else if (angle === 'rear') {
-                targetCameraPos = { x: 0.1, y: 1.6, z: -6.0 }; // Clean Tail Lens View
-            }
-        }
-
-        // Frame Rendering Update Optimization Loop
-        function renderTick() {
-            requestAnimationFrame(renderTick);
-            
-            // Linear Interpolation (Lerp) calculations to smoothly glide camera into view positions
-            camera.position.x += (targetCameraPos.x - camera.position.x) * 0.06;
-            camera.position.y += (targetCameraPos.y - camera.position.y) * 0.06;
-            camera.position.z += (targetCameraPos.z - camera.position.z) * 0.06;
-            camera.lookAt(new THREE.Vector3(0, 0.1, 0));
-
-            // Idle rotational animation if car is in side review mode
-            if (e46Chassis && Math.abs(targetCameraPos.x - (-5.4)) < 0.2) {
-                e46Chassis.rotation.y += 0.002;
-            } else if(e46Chassis) {
-                e46Chassis.rotation.y *= 0.9; // Return chassis back to zero center point smoothly
-            }
-
+        function animate() {
+            requestAnimationFrame(animate);
+            if(chassisNode) chassisNode.rotation.y += 0.002;
             renderer.render(scene, camera);
-        }
-        requestAnimationFrame(renderTick);
-
-
-        // --- SECTION 3: NATIVE ANDROID APPLICATION SYSTEM LAUNCH INTENTS ---
-        function launchAndroidApp(packageName) {
-            console.log("Routing Launch Token package target: " + packageName);
-            if (typeof cordova !== 'undefined' && cordova.plugins && cordova.plugins.intentShim) {
-                cordova.plugins.intentShim.startActivity({
-                    action: "android.intent.action.MAIN",
-                    package: packageName,
-                    category: "android.intent.category.LAUNCHER"
-                }, 
-                () => console.log("Handoff Success"), 
-                (err) => console.error("Intent target unavailable: " + err));
-            }
-        }
-
-
-        // --- SECTION 4: CUSTOM OFF-LINE LOCAL COMPONENT MEDIA PLAYER ENGINE ---
-        let internalAudioEngine = new Audio();
-        let scannedTracklist = [];
-        let runningTrackIndex = 0;
-        let isScannerInitialized = false;
-
-        function initializeOfflineScanner() {
-            if (isScannerInitialized) return;
-            
-            // Checks if Cordova Storage Permissions are mapped natively inside the device context
-            if (typeof cordova !== 'undefined' && typeof resolveLocalFileSystemURL !== 'undefined') {
-                // Target Folder Path: Internal Storage -> /Music/E46Player/
-                const targetDirUri = "file:///sdcard/Music/E46Player/";
-                
-                window.resolveLocalFileSystemURL(targetDirUri, function(dirEntry) {
-                    const dirReader = dirEntry.createReader();
-                    dirReader.readEntries(function(entries) {
-                        scannedTracklist = entries.filter(e => e.isFile && e.name.toLowerCase().endsWith('.mp3'));
-                        
-                        if(scannedTracklist.length > 0) {
-                            isScannerInitialized = true;
-                            document.getElementById('player-tile-status').innerText = `${scannedTracklist.length} Local Tracks Found`;
-                            loadTargetTrack(0);
-                        } else {
-                            document.getElementById('player-tile-status').innerText = "Folder Empty. Add MP3s.";
-                        }
-                    }, handleScanError);
-                }, function(err) {
-                    console.warn("Target folder access denied. Creating placeholder array for runtime dashboard safety simulation.");
-                    loadMockPlaylist();
-                });
-            } else {
-                loadMockPlaylist();
-            }
-        }
-
-        function loadMockPlaylist() {
-            isScannerInitialized = true;
-            document.getElementById('player-tile-status').innerText = "Demo Playlist Loaded";
-            scannedTracklist = [
-                { name: "BMW Straight Six Engine Sound.mp3", nativeURL: "" },
-                { name: "M3 CSL Intake Track.mp3", nativeURL: "" }
-            ];
-            loadTargetTrack(0);
-        }
-
-        function handleScanError(error) {
-            console.error("Storage Access Exception Blocked: ", error);
-            document.getElementById('player-tile-status').innerText = "Storage Scan Failure";
-        }
-
-        function loadTargetTrack(idx) {
-            if (scannedTracklist.length === 0) return;
-            runningTrackIndex = idx;
-            
-            const currentTrack = scannedTracklist[runningTrackIndex];
-            document.getElementById('audio-title').innerText = currentTrack.name.replace('.mp3', '');
-            document.getElementById('audio-artist').innerText = "Local Storage Media File";
-            document.getElementById('audio-count').innerText = `${runningTrackIndex + 1}/${scannedTracklist.length}`;
-            
-            if(currentTrack.nativeURL) {
-                internalAudioEngine.src = currentTrack.nativeURL;
-            }
-            internalAudioEngine.load();
-        }
-
-        function togglePlay() {
-            if(internalAudioEngine.paused) {
-                internalAudioEngine.play().catch(e => console.log("Audio pipeline initialized without dynamic asset source."));
-                document.getElementById('play-btn').innerText = "⏸";
-            } else {
-                internalAudioEngine.pause();
-                document.getElementById('play-btn').innerText = "▶";
-            }
-        }
-
-        function nextTrack() {
-            let nextIdx = (runningTrackIndex + 1) % scannedTracklist.length;
-            loadTargetTrack(nextIdx);
-            internalAudioEngine.play().catch(()=>{});
-            document.getElementById('play-btn').innerText = "⏸";
-        }
-
-        function prevTrack() {
-            let prevIdx = (runningTrackIndex - 1 + scannedTracklist.length) % scannedTracklist.length;
-            loadTargetTrack(prevIdx);
-            internalAudioEngine.play().catch(()=>{});
-            document.getElementById('play-btn').innerText = "⏸";
-        }
-
-        internalAudioEngine.addEventListener('timeupdate', () => {
-            if(!internalAudioEngine.duration) return;
-            const percentage = (internalAudioEngine.currentTime / internalAudioEngine.duration) * 100;
-            document.getElementById('audio-progress').style.width = `${percentage}%`;
-        });
-
-        internalAudioEngine.addEventListener('ended', () => { nextTrack(); });
-
-        function seekAudio(event) {
-            const containerWidth = event.currentTarget.clientWidth;
-            const clickX = event.offsetX;
-            if(internalAudioEngine.duration) {
-                internalAudioEngine.currentTime = (clickX / containerWidth) * internalAudioEngine.duration;
-            }
         }
 
         window.addEventListener('resize', () => {
-            camera.aspect = container.clientWidth / container.clientHeight;
+            camera.aspect = viewPort.clientWidth / viewPort.clientHeight;
             camera.updateProjectionMatrix();
-            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setSize(viewPort.clientWidth, viewPort.clientHeight);
         });
+
+        init3DEnvironment();
+        animate();
     </script>
 </body>
 </html>
